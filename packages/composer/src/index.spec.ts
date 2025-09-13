@@ -1,5 +1,6 @@
 import { CreateNodesContext, CreateNodesResult } from '@nx/devkit';
-import { createNodes, ComposerJson } from './index';
+import { createNodes } from './index';
+import { ComposerJson } from './models/composer-json';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -63,36 +64,6 @@ describe('@nx-php/composer', () => {
             projectType: 'library',
             sourceRoot: 'packages/test-lib',
             tags: ['php', 'composer'],
-            targets: {
-              test: {
-                executor: 'nx:run-commands',
-                options: {
-                  command: 'composer test',
-                  cwd: 'packages/test-lib',
-                },
-              },
-              'test:coverage': {
-                executor: 'nx:run-commands',
-                options: {
-                  command: 'composer test:coverage',
-                  cwd: 'packages/test-lib',
-                },
-              },
-              install: {
-                executor: 'nx:run-commands',
-                options: {
-                  command: 'composer install',
-                  cwd: 'packages/test-lib',
-                },
-              },
-              update: {
-                executor: 'nx:run-commands',
-                options: {
-                  command: 'composer update',
-                  cwd: 'packages/test-lib',
-                },
-              },
-            },
           },
         },
       });

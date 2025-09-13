@@ -5,52 +5,9 @@ import {
   ProjectConfiguration,
   workspaceRoot,
 } from '@nx/devkit';
-import { readdirSync, readFileSync, statSync } from 'fs';
-import { join, relative, dirname, basename } from 'path';
-
-export interface ComposerJson {
-  name?: string;
-  type?: string;
-  description?: string;
-  version?: string;
-  require?: Record<string, string>;
-  'require-dev'?: Record<string, string>;
-  autoload?: {
-    'psr-4'?: Record<string, string>;
-    classmap?: string[];
-    files?: string[];
-  };
-  scripts?: Record<string, string>;
-}
-
-/**
- * Recursively scans for composer.json files in the workspace
- */
-function findComposerProjects(directory: string): string[] {
-  const composerFiles: string[] = [];
-  
-  try {
-    const entries = readdirSync(directory);
-    
-    for (const entry of entries) {
-      const fullPath = join(directory, entry);
-      const stats = statSync(fullPath);
-      
-      if (stats.isDirectory()) {
-        // Skip node_modules and other common directories to avoid false positives
-        if (!['node_modules', '.git', 'dist', 'tmp', '.nx'].includes(entry)) {
-          composerFiles.push(...findComposerProjects(fullPath));
-        }
-      } else if (entry === 'composer.json') {
-        composerFiles.push(fullPath);
-      }
-    }
-  } catch (error) {
-    // Ignore directories we can't read
-  }
-  
-  return composerFiles;
-}
+import { readFileSync, statSync } from 'fs';
+import { join, dirname, basename } from 'path';
+import { ComposerJson } from './models/composer-json';
 
 /**
  * Parses a composer.json file and extracts relevant metadata
@@ -105,42 +62,6 @@ function createProjectConfiguration(
     sourceRoot: projectRoot,
     tags: ['php', 'composer'],
   };
-
-  // Add targets based on available composer scripts
-  const targets: Record<string, any> = {};
-  
-  if (composerJson.scripts) {
-    for (const [scriptName, scriptCommand] of Object.entries(composerJson.scripts)) {
-      targets[scriptName] = {
-        executor: 'nx:run-commands',
-        options: {
-          command: `composer ${scriptName}`,
-          cwd: projectRoot,
-        },
-      };
-    }
-  }
-
-  // Add default composer targets
-  targets.install = {
-    executor: 'nx:run-commands',
-    options: {
-      command: 'composer install',
-      cwd: projectRoot,
-    },
-  };
-
-  targets.update = {
-    executor: 'nx:run-commands',
-    options: {
-      command: 'composer update',
-      cwd: projectRoot,
-    },
-  };
-
-  if (Object.keys(targets).length > 0) {
-    config.targets = targets;
-  }
 
   return config;
 }
