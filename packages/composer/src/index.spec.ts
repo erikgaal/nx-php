@@ -2,7 +2,6 @@ import { CreateNodesContext, CreateNodesResult } from '@nx/devkit';
 import { createNodes } from './index';
 import { ComposerJson } from './models/composer-json';
 import { readFileSync } from 'fs';
-import { join } from 'path';
 
 jest.mock('fs');
 const mockReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;

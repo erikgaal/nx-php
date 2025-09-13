@@ -3,9 +3,8 @@ import {
   CreateNodesFunction,
   CreateNodesResult,
   ProjectConfiguration,
-  workspaceRoot,
 } from '@nx/devkit';
-import { readFileSync, statSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { ComposerJson } from './models/composer-json';
 
@@ -71,7 +70,7 @@ function createProjectConfiguration(
  */
 export const createNodes: CreateNodesFunction = (
   configFilePath: string,
-  options: any,
+  options: unknown,
   context: CreateNodesContext
 ) => {
   const composerJsonPath = join(context.workspaceRoot, configFilePath);
@@ -104,7 +103,7 @@ const plugin = {
   name: '@nx-php/composer',
   createNodesV2: [
     '{**/composer.json,composer.json}',
-    (configFiles: readonly string[], options: any, context: CreateNodesContext) => {
+    (configFiles: readonly string[], options: unknown, context: CreateNodesContext) => {
       return configFiles.map((configFile) => {
         const result = createNodes(configFile, options, context);
         return [configFile, result];
