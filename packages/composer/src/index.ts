@@ -112,7 +112,7 @@ function createProjectConfiguration(
   if (composerJson.scripts) {
     for (const [scriptName, scriptCommand] of Object.entries(composerJson.scripts)) {
       targets[scriptName] = {
-        executor: '@nx/workspace:run-commands',
+        executor: 'nx:run-commands',
         options: {
           command: `composer ${scriptName}`,
           cwd: projectRoot,
@@ -123,7 +123,7 @@ function createProjectConfiguration(
 
   // Add default composer targets
   targets.install = {
-    executor: '@nx/workspace:run-commands',
+    executor: 'nx:run-commands',
     options: {
       command: 'composer install',
       cwd: projectRoot,
@@ -131,7 +131,7 @@ function createProjectConfiguration(
   };
 
   targets.update = {
-    executor: '@nx/workspace:run-commands',
+    executor: 'nx:run-commands',
     options: {
       command: 'composer update',
       cwd: projectRoot,
@@ -177,12 +177,19 @@ export const createNodes: CreateNodesFunction = (
 };
 
 /**
- * Plugin configuration
+ * Plugin configuration using createNodesV2 for Nx 21+
  */
-export const ComposerPlugin = {
+const plugin = {
   name: '@nx-php/composer',
-  createNodes: ['{**/composer.json,composer.json}', createNodes],
+  createNodesV2: [
+    '{**/composer.json,composer.json}',
+    (configFiles: readonly string[], options: any, context: CreateNodesContext) => {
+      return configFiles.map((configFile) => {
+        const result = createNodes(configFile, options, context);
+        return [configFile, result];
+      });
+    },
+  ],
 };
 
-// Export the plugin as default
-export default ComposerPlugin;
+export default plugin;

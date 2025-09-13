@@ -65,28 +65,28 @@ describe('@nx-php/composer', () => {
             tags: ['php', 'composer'],
             targets: {
               test: {
-                executor: '@nx/workspace:run-commands',
+                executor: 'nx:run-commands',
                 options: {
                   command: 'composer test',
                   cwd: 'packages/test-lib',
                 },
               },
               'test:coverage': {
-                executor: '@nx/workspace:run-commands',
+                executor: 'nx:run-commands',
                 options: {
                   command: 'composer test:coverage',
                   cwd: 'packages/test-lib',
                 },
               },
               install: {
-                executor: '@nx/workspace:run-commands',
+                executor: 'nx:run-commands',
                 options: {
                   command: 'composer install',
                   cwd: 'packages/test-lib',
                 },
               },
               update: {
-                executor: '@nx/workspace:run-commands',
+                executor: 'nx:run-commands',
                 options: {
                   command: 'composer update',
                   cwd: 'packages/test-lib',
