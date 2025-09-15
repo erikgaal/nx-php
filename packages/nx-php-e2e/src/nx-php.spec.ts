@@ -148,6 +148,53 @@ describe('nx-php', () => {
       });
       expect(listOutput).toContain(projectName);
     });
+
+    it('should automatically discover composer projects via project discovery', () => {
+      const projectName1 = 'discovered-lib-1';
+      const projectName2 = 'discovered-lib-2';
+      
+      // Generate two composer projects
+      execSync(`npx nx g @nx-php/composer:project ${projectName1}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+      
+      execSync(`npx nx g @nx-php/composer:project ${projectName2} --directory=libs`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Reset the project graph cache to ensure fresh discovery
+      execSync(`npx nx reset`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Verify both projects are discovered and listed via project discovery
+      const listOutput = execSync(`npx nx show projects`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      // Both projects should be discovered automatically by scanning composer.json files
+      expect(listOutput).toContain(projectName1);
+      expect(listOutput).toContain(projectName2);
+
+      // Verify individual project details are available through discovery
+      const project1Output = execSync(`npx nx show project ${projectName1}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      expect(project1Output).toContain(projectName1);
+      expect(project1Output).toContain('library');
+
+      const project2Output = execSync(`npx nx show project libs-${projectName2}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      expect(project2Output).toContain('libs-' + projectName2);
+      expect(project2Output).toContain('library');
+    });
   });
 });
 
