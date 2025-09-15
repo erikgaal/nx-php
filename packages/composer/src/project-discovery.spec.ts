@@ -53,12 +53,10 @@ describe('project-discovery', () => {
     expect(project.tags).toContain('composer:library');
   });
 
-  it('should detect application type based on require-dev dependencies', () => {
+  it('should detect application type for project type', () => {
     const composerJson = {
       name: 'my/app',
-      'require-dev': {
-        'phpunit/phpunit': '^9.0',
-      },
+      type: 'project',
     };
 
     vol.fromJSON({
@@ -72,29 +70,25 @@ describe('project-discovery', () => {
     const project = result.projects!['my-app'];
     
     expect(project.projectType).toBe('application');
-    expect(project.targets).toHaveProperty('test');
   });
 
-  it('should detect application type based on scripts', () => {
+  it('should detect library type for non-project types', () => {
     const composerJson = {
-      name: 'my/console-app',
-      scripts: {
-        'start': 'php bin/console',
-        'test': 'phpunit',
-      },
+      name: 'my/lib',
+      type: 'library',
     };
 
     vol.fromJSON({
-      '/workspace/console-app/composer.json': JSON.stringify(composerJson),
+      '/workspace/my-lib/composer.json': JSON.stringify(composerJson),
     });
 
-    const results = createNodesFunction(['console-app/composer.json'], undefined, mockContext);
+    const results = createNodesFunction(['my-lib/composer.json'], undefined, mockContext);
     const [, result] = results[0];
 
-    expect(result.projects).toHaveProperty('console-app');
-    const project = result.projects!['console-app'];
+    expect(result.projects).toHaveProperty('my-lib');
+    const project = result.projects!['my-lib'];
     
-    expect(project.projectType).toBe('application');
+    expect(project.projectType).toBe('library');
   });
 
   it('should create project name from directory when no name is specified', () => {
@@ -138,7 +132,7 @@ describe('project-discovery', () => {
     expect(project.sourceRoot).toBe('test-package/lib');
   });
 
-  it('should create common targets', () => {
+  it('should not create default targets', () => {
     const composerJson = {
       name: 'test/package',
     };
@@ -153,16 +147,11 @@ describe('project-discovery', () => {
     expect(result.projects).toHaveProperty('test-package');
     const project = result.projects!['test-package'];
     
-    expect(project.targets).toHaveProperty('install');
-    expect(project.targets).toHaveProperty('update');
-    expect(project.targets).toHaveProperty('validate');
-    
-    expect(project.targets!.install.executor).toBe('nx:run-commands');
-    expect(project.targets!.install.options.command).toBe('composer install');
-    expect(project.targets!.install.options.cwd).toBe('test-package');
+    // Should not have any targets by default
+    expect(project.targets).toBeUndefined();
   });
 
-  it('should add test target when phpunit is in require-dev', () => {
+  it('should not add test target even when phpunit is in require-dev', () => {
     const composerJson = {
       name: 'test/package',
       'require-dev': {
@@ -180,12 +169,11 @@ describe('project-discovery', () => {
     expect(result.projects).toHaveProperty('test-package');
     const project = result.projects!['test-package'];
     
-    expect(project.targets).toHaveProperty('test');
-    expect(project.targets!.test.options.command).toBe('vendor/bin/phpunit');
-    expect(project.targets!.test.dependsOn).toEqual(['install']);
+    // Should not have any targets including test
+    expect(project.targets).toBeUndefined();
   });
 
-  it('should add test target with custom script command', () => {
+  it('should not add test target even with test scripts', () => {
     const composerJson = {
       name: 'test/package',
       scripts: {
@@ -203,8 +191,8 @@ describe('project-discovery', () => {
     expect(result.projects).toHaveProperty('test-package');
     const project = result.projects!['test-package'];
     
-    expect(project.targets).toHaveProperty('test');
-    expect(project.targets!.test.options.command).toBe('vendor/bin/phpunit --coverage-clover coverage.xml');
+    // Should not have any targets including test
+    expect(project.targets).toBeUndefined();
   });
 
   it('should add tags based on composer type and keywords', () => {
@@ -301,9 +289,7 @@ describe('project-discovery', () => {
     };
     const composerJson2 = {
       name: 'package/two',
-      'require-dev': {
-        'phpunit/phpunit': '^9.0',
-      },
+      type: 'project',
     };
 
     vol.fromJSON({

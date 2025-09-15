@@ -7,24 +7,9 @@ import {
   ProjectConfiguration,
   logger,
 } from '@nx/devkit';
-import { dirname, relative, basename, resolve } from 'path';
+import { dirname, relative, resolve } from 'path';
 import { existsSync, readFileSync } from 'fs';
-
-interface ComposerJson {
-  name?: string;
-  type?: 'library' | 'project' | 'metapackage' | 'composer-plugin';
-  description?: string;
-  keywords?: string[];
-  require?: Record<string, string>;
-  'require-dev'?: Record<string, string>;
-  autoload?: {
-    'psr-4'?: Record<string, string>;
-    'psr-0'?: Record<string, string>;
-    files?: string[];
-    classmap?: string[];
-  };
-  scripts?: Record<string, string | string[]>;
-}
+import { ComposerJson } from './models/composer-json';
 
 /**
  * Parse composer.json file and extract project metadata
@@ -57,29 +42,19 @@ function generateProjectName(composerJson: ComposerJson, projectRoot: string, wo
   // projectRoot is already relative, so just use the last directory name
   // or the full relative path with slashes replaced with hyphens
   const relativePath = projectRoot.startsWith('/') ? relative(workspaceRoot, projectRoot) : projectRoot;
-  return relativePath.replace(/[\/\\]/g, '-');
+  return relativePath.replace(/[/\\]/g, '-');
 }
 
 /**
  * Determine project type based on composer.json metadata
  */
 function getProjectType(composerJson: ComposerJson): 'library' | 'application' {
-  // If it's explicitly marked as library, it's a library
-  if (composerJson.type === 'library') {
-    return 'library';
-  }
-
-  // If it has require-dev dependencies, it's likely a main application
-  if (composerJson['require-dev'] && Object.keys(composerJson['require-dev']).length > 0) {
+  // If it's explicitly marked as project, it's an application
+  if (composerJson.type === 'project') {
     return 'application';
   }
 
-  // If it has scripts, it's likely an application
-  if (composerJson.scripts && Object.keys(composerJson.scripts).length > 0) {
-    return 'application';
-  }
-
-  // Default to library
+  // Otherwise, map to library
   return 'library';
 }
 
@@ -117,51 +92,6 @@ function createProjectConfiguration(
     // Default source root
     config.sourceRoot = `${relativeRoot}/src`;
   }
-
-  // Add targets for common Composer operations
-  config.targets = {
-    install: {
-      executor: 'nx:run-commands',
-      options: {
-        command: 'composer install',
-        cwd: relativeRoot,
-      },
-    },
-    update: {
-      executor: 'nx:run-commands',
-      options: {
-        command: 'composer update',
-        cwd: relativeRoot,
-      },
-      dependsOn: ['install'],
-    },
-  };
-
-  // Add test target if phpunit is available or test script exists
-  const hasPhpUnit = 
-    composerJson['require-dev']?.['phpunit/phpunit'] ||
-    composerJson.require?.['phpunit/phpunit'] ||
-    composerJson.scripts?.test;
-
-  if (hasPhpUnit) {
-    config.targets!.test = {
-      executor: 'nx:run-commands',
-      options: {
-        command: composerJson.scripts?.test || 'vendor/bin/phpunit',
-        cwd: relativeRoot,
-      },
-      dependsOn: ['install'],
-    };
-  }
-
-  // Add validate target
-  config.targets!.validate = {
-    executor: 'nx:run-commands',
-    options: {
-      command: 'composer validate',
-      cwd: relativeRoot,
-    },
-  };
 
   // Add tags based on composer metadata
   const tags: string[] = [];
