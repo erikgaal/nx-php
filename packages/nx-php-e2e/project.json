@@ -3,7 +3,7 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "packages/nx-php-e2e/src",
-  "implicitDependencies": ["nx-php"],
+  "implicitDependencies": ["nx-php", "composer"],
   "targets": {
     "e2e": {
       "executor": "@nx/jest:jest",

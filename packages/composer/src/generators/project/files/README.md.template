@@ -1,0 +1,19 @@
+# <%= name %>
+
+A PHP Composer project.
+
+## Installation
+
+```bash
+composer install
+```
+
+## Usage
+
+TODO: Add usage instructions
+
+## Testing
+
+```bash
+vendor/bin/phpunit
+```
