@@ -1,0 +1,21 @@
+{
+  "name": "<%= name %>",
+  "type": "library",
+  "description": "A PHP Composer project",
+  "require": {
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "<%= namespace %>\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "<%= namespace %>\\Tests\\": "tests/"
+    }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.0"
+  }
+}
