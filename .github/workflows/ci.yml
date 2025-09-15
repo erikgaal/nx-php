@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      # Cache node_modules
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci --legacy-peer-deps
+      - uses: nrwl/nx-set-shas@v4
+
+      # Run lint, test, and build for all projects
+      # Using run-many instead of affected to ensure all projects are tested
+      - run: npx nx run-many -t lint test build
+
+      # Run end-to-end tests to ensure the nx-php plugin works correctly
+      # E2E tests include local registry setup and full plugin integration testing
+      - run: npx nx run nx-php-e2e:e2e
