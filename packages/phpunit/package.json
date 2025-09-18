@@ -1,0 +1,14 @@
+{
+  "name": "@nx-php/phpunit",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "nx-plugin": {
+    "name": "@nx-php/phpunit"
+  },
+  "dependencies": {
+    "@nx/devkit": "21.5.2",
+    "tslib": "^2.3.0"
+  }
+}
