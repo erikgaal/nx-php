@@ -11,7 +11,7 @@ This repository provides Nx plugins that bring powerful monorepo capabilities to
 ✨ **Automatic Composer Project Discovery** - Automatically detects and registers Composer projects in your workspace  
 🚀 **Project Generation** - Create new PHP libraries and applications with proper PSR-4 structure  
 🏗️ **Nx Integration** - Full integration with Nx commands for running tasks across multiple projects  
-🧪 **Testing Support** - Built-in PHPUnit configuration and task automation  
+🧪 **PHPUnit Testing** - Automatic detection of PHPUnit configurations and test target registration  
 📦 **Dependency Management** - Intelligent handling of Composer dependencies and scripts  
 🏷️ **Smart Tagging** - Automatic project tagging based on Composer metadata
 
@@ -29,6 +29,9 @@ cd my-php-workspace
 
 # Install the PHP Composer plugin
 npm install -D @nx-php/composer
+
+# Install the PHPUnit plugin for automatic test target registration
+npm install -D @nx-php/phpunit
 ```
 
 ### Configuration
@@ -38,7 +41,8 @@ Add the plugin to your `nx.json`:
 ```json
 {
   "plugins": [
-    "@nx-php/composer"
+    "@nx-php/composer",
+    "@nx-php/phpunit"
   ]
 }
 ```
@@ -70,6 +74,48 @@ The `@nx-php/composer` plugin automatically discovers existing Composer projects
 - **`test`**: Runs `vendor/bin/phpunit` (depends on install)
 
 **Discovered Projects** (existing composer.json files) are automatically registered as Nx projects but don't include default targets. You can add custom targets to any project via workspace configuration.
+
+## PHPUnit Testing
+
+The `@nx-php/phpunit` plugin automatically detects PHPUnit configurations and adds `phpunit` targets to projects that have PHPUnit enabled.
+
+### Automatic PHPUnit Detection
+
+The plugin scans for these PHPUnit configuration files (in order of priority):
+- `phpunit.xml`
+- `phpunit.xml.dist`  
+- `phpunit.dist.xml`
+- `.phpunit.xml`
+- `.phpunit.xml.dist`
+- `phpunit.config.xml`
+
+### PHPUnit Target Features
+
+For projects with PHPUnit configuration, the plugin automatically adds a `phpunit` target with:
+
+- **Command**: `vendor/bin/phpunit --configuration <config-file>`
+- **Working Directory**: Project root
+- **Tags**: `phpunit` (for easy filtering)
+- **Help Information**: Built-in help with common PHPUnit options
+
+### PHPUnit Usage Examples
+
+```bash
+# Run PHPUnit tests for a specific project
+npx nx phpunit my-library
+
+# Run tests with coverage
+npx nx phpunit my-library -- --coverage-text
+
+# Run specific test suite
+npx nx phpunit my-library -- --testsuite Unit
+
+# Run tests matching a pattern
+npx nx phpunit my-library -- --filter Calculator
+
+# Run PHPUnit tests for all projects with PHPUnit
+npx nx run-many --target=phpunit --projects=tag:phpunit
+```
 
 ## Usage Examples
 
