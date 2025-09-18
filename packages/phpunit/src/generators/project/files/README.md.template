@@ -1,0 +1,47 @@
+# <%= name %>
+
+This is a PHP project with PHPUnit testing enabled.
+
+## Project Structure
+
+```
+<%= projectRoot %>/
+├── composer.json       # Composer configuration
+├── phpunit.xml         # PHPUnit configuration
+├── src/                # Source code
+└── tests/              # Test files
+    ├── Unit/           # Unit tests
+    └── Feature/        # Integration tests
+```
+
+## Usage
+
+Once the `@nx-php/phpunit` plugin is installed and configured, you can run tests using:
+
+```bash
+# Run all tests
+nx phpunit <%= projectName %>
+
+# Run tests with coverage
+nx phpunit <%= projectName %> -- --coverage-text
+
+# Run specific test suite
+nx phpunit <%= projectName %> -- --testsuite Unit
+
+# Run tests matching a pattern
+nx phpunit <%= projectName %> -- --filter ClassName
+```
+
+## Getting Started
+
+1. Install dependencies:
+```bash
+nx install <%= projectName %>
+# or: composer install (in project directory)
+```
+
+2. Add your PHP classes to the `src/` directory
+
+3. Add corresponding tests to the `tests/Unit/` or `tests/Feature/` directories
+
+4. Run tests using the commands above

@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace <%= namespace %>\Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+use <%= namespace %>\Calculator;
+
+class CalculatorTest extends TestCase
+{
+    private Calculator $calculator;
+
+    protected function setUp(): void
+    {
+        $this->calculator = new Calculator();
+    }
+
+    public function testAddition(): void
+    {
+        $result = $this->calculator->add(2.5, 3.7);
+        $this->assertEquals(6.2, $result, '', 0.001);
+    }
+
+    public function testSubtraction(): void
+    {
+        $result = $this->calculator->subtract(10, 4);
+        $this->assertEquals(6, $result);
+    }
+
+    public function testMultiplication(): void
+    {
+        $result = $this->calculator->multiply(3, 4);
+        $this->assertEquals(12, $result);
+    }
+
+    public function testDivision(): void
+    {
+        $result = $this->calculator->divide(15, 3);
+        $this->assertEquals(5, $result);
+    }
+
+    public function testDivisionByZero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Division by zero is not allowed');
+        
+        $this->calculator->divide(10, 0);
+    }
+}
