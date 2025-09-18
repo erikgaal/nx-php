@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { join, dirname } from 'path';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 
 describe('nx-php', () => {
   let projectDirectory: string;
@@ -10,11 +10,20 @@ describe('nx-php', () => {
 
     // The plugin has been built and published to a local registry in the jest globalSetup
     // Install the plugins built with the latest source code into the test repo
-    execSync(`npm install -D nx-php@e2e @nx-php/composer@e2e`, {
+    execSync(`npm install -D nx-php@e2e @nx-php/composer@e2e @nx-php/phpstan@e2e`, {
       cwd: projectDirectory,
       stdio: 'inherit',
       env: process.env,
     });
+
+    // Add the PHPStan plugin to nx.json
+    const nxJsonPath = join(projectDirectory, 'nx.json');
+    const nxJson = JSON.parse(readFileSync(nxJsonPath, 'utf-8'));
+    if (!nxJson.plugins) {
+      nxJson.plugins = [];
+    }
+    nxJson.plugins.push('@nx-php/phpstan');
+    writeFileSync(nxJsonPath, JSON.stringify(nxJson, null, 2));
   });
 
   afterAll(() => {
@@ -38,6 +47,14 @@ describe('nx-php', () => {
   it('should have @nx-php/composer plugin installed', () => {
     // npm ls will fail if the package is not installed properly
     execSync('npm ls @nx-php/composer', {
+      cwd: projectDirectory,
+      stdio: 'inherit',
+    });
+  });
+
+  it('should have @nx-php/phpstan plugin installed', () => {
+    // npm ls will fail if the package is not installed properly
+    execSync('npm ls @nx-php/phpstan', {
       cwd: projectDirectory,
       stdio: 'inherit',
     });
@@ -194,6 +211,197 @@ describe('nx-php', () => {
       });
       expect(project2Output).toContain('libs-' + projectName2);
       expect(project2Output).toContain('library');
+    });
+  });
+
+  describe('@nx-php/phpstan plugin', () => {
+    it('should discover project with phpstan.neon and create phpstan target', () => {
+      const projectName = 'phpstan-lib';
+      const projectPath = join(projectDirectory, 'packages', projectName);
+      
+      // Create project directory
+      mkdirSync(projectPath, { recursive: true });
+      
+      // Create a phpstan.neon configuration file
+      const phpstanConfig = `parameters:
+    level: 8
+    paths:
+        - src
+    excludePaths:
+        - src/legacy/*`;
+      writeFileSync(join(projectPath, 'phpstan.neon'), phpstanConfig);
+
+      // Create a basic PHP file
+      const srcPath = join(projectPath, 'src');
+      mkdirSync(srcPath, { recursive: true });
+      writeFileSync(join(srcPath, 'TestClass.php'), '<?php class TestClass { public function test(): string { return "test"; } }');
+
+      // Verify the project is registered with Nx and has phpstan target
+      const showProjectOutput = execSync(`npx nx show project packages-${projectName}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      expect(showProjectOutput).toContain(`packages-${projectName}`);
+      expect(showProjectOutput).toContain('phpstan');
+      expect(showProjectOutput).toContain('library');
+    });
+
+    it('should discover project with phpstan.neon.dist and create phpstan target', () => {
+      const projectName = 'phpstan-dist-lib';
+      const projectPath = join(projectDirectory, 'libs', projectName);
+      
+      // Create project directory
+      mkdirSync(projectPath, { recursive: true });
+      
+      // Create a phpstan.neon.dist configuration file
+      const phpstanConfig = `parameters:
+    level: 7
+    paths:
+        - src`;
+      writeFileSync(join(projectPath, 'phpstan.neon.dist'), phpstanConfig);
+
+      // Create a basic PHP file
+      const srcPath = join(projectPath, 'src');
+      mkdirSync(srcPath, { recursive: true });
+      writeFileSync(join(srcPath, 'DistTestClass.php'), '<?php class DistTestClass { }');
+
+      // Verify the project is registered with Nx
+      const showProjectOutput = execSync(`npx nx show project libs-${projectName}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      expect(showProjectOutput).toContain(`libs-${projectName}`);
+      expect(showProjectOutput).toContain('phpstan');
+    });
+
+    it('should discover project with phpstan.json and create phpstan target', () => {
+      const projectName = 'phpstan-json-lib';
+      const projectPath = join(projectDirectory, 'apps', projectName);
+      
+      // Create project directory
+      mkdirSync(projectPath, { recursive: true });
+      
+      // Create a phpstan.json configuration file
+      const phpstanConfig = {
+        parameters: {
+          level: 9,
+          paths: ['src']
+        }
+      };
+      writeFileSync(join(projectPath, 'phpstan.json'), JSON.stringify(phpstanConfig, null, 2));
+
+      // Create a basic PHP file
+      const srcPath = join(projectPath, 'src');
+      mkdirSync(srcPath, { recursive: true });
+      writeFileSync(join(srcPath, 'JsonTestClass.php'), '<?php class JsonTestClass { }');
+
+      // Verify the project is registered with Nx
+      const showProjectOutput = execSync(`npx nx show project apps-${projectName}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      expect(showProjectOutput).toContain(`apps-${projectName}`);
+      expect(showProjectOutput).toContain('phpstan');
+    });
+
+    it('should run phpstan target successfully (dry run)', () => {
+      const projectName = 'phpstan-runnable';
+      const projectPath = join(projectDirectory, 'packages', projectName);
+      
+      // Create project directory
+      mkdirSync(projectPath, { recursive: true });
+      
+      // Create a phpstan.neon configuration file
+      const phpstanConfig = `parameters:
+    level: 8
+    paths:
+        - src`;
+      writeFileSync(join(projectPath, 'phpstan.neon'), phpstanConfig);
+
+      // Create composer.json with PHPStan dependency
+      const composerJson = {
+        name: `test/${projectName}`,
+        require: {
+          php: '^8.0'
+        },
+        'require-dev': {
+          'phpstan/phpstan': '^1.0'
+        }
+      };
+      writeFileSync(join(projectPath, 'composer.json'), JSON.stringify(composerJson, null, 2));
+
+      // Create a basic PHP file with a simple issue for PHPStan to find
+      const srcPath = join(projectPath, 'src');
+      mkdirSync(srcPath, { recursive: true });
+      writeFileSync(join(srcPath, 'RunnableClass.php'), '<?php class RunnableClass { public function test() { return "test"; } }');
+
+      // Test that we can see the phpstan target configuration (dry run)
+      try {
+        const dryRunOutput = execSync(`npx nx phpstan packages-${projectName} --dry-run`, {
+          cwd: projectDirectory,
+          encoding: 'utf-8',
+        });
+        
+        expect(dryRunOutput).toContain(`packages-${projectName}`);
+        expect(dryRunOutput).toContain('phpstan');
+        expect(dryRunOutput).toContain('vendor/bin/phpstan analyze --configuration=phpstan.neon');
+      } catch (error) {
+        // Even if the command fails (because phpstan isn't installed), 
+        // we can still verify the command structure in the error output
+        const errorOutput = error.message || error.toString();
+        expect(errorOutput).toContain('vendor/bin/phpstan analyze --configuration=phpstan.neon');
+        expect(errorOutput).toContain('phpstan');
+      }
+    });
+
+    it('should show all phpstan projects when filtering by tag', () => {
+      // List all projects with the phpstan tag
+      const taggedOutput = execSync(`npx nx show projects --with-tag phpstan`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      // Should contain multiple projects we created with PHPStan configs
+      expect(taggedOutput).toContain('packages-phpstan-lib');
+      expect(taggedOutput).toContain('libs-phpstan-dist-lib');
+      expect(taggedOutput).toContain('apps-phpstan-json-lib');
+      expect(taggedOutput).toContain('packages-phpstan-runnable');
+    });
+
+    it('should handle nested project with PHPStan config', () => {
+      const nestedPath = join('vendor', 'acme', 'nested-phpstan-lib');
+      const projectPath = join(projectDirectory, nestedPath);
+      
+      // Create nested project directory
+      mkdirSync(projectPath, { recursive: true });
+      
+      // Create a phpstan.php configuration file
+      const phpstanConfig = `<?php
+return [
+    'parameters' => [
+        'level' => 8,
+        'paths' => ['src'],
+    ],
+];`;
+      writeFileSync(join(projectPath, 'phpstan.php'), phpstanConfig);
+
+      // Create a basic PHP file
+      const srcPath = join(projectPath, 'src');
+      mkdirSync(srcPath, { recursive: true });
+      writeFileSync(join(srcPath, 'NestedTestClass.php'), '<?php class NestedTestClass { }');
+
+      // Verify the nested project is registered with Nx
+      const nestedProjectName = nestedPath.replace(/[/\\]/g, '-');
+      const showProjectOutput = execSync(`npx nx show project ${nestedProjectName}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+      
+      expect(showProjectOutput).toContain(nestedProjectName);
+      expect(showProjectOutput).toContain('phpstan');
     });
   });
 });

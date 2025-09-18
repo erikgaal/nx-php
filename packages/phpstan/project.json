@@ -1,0 +1,63 @@
+{
+  "name": "phpstan",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/phpstan/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/phpstan"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/phpstan",
+        "main": "packages/phpstan/src/index.ts",
+        "tsConfig": "packages/phpstan/tsconfig.lib.json",
+        "assets": [
+          "packages/phpstan/*.md",
+          {
+            "input": "./packages/phpstan/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./packages/phpstan/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./packages/phpstan",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./packages/phpstan",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/phpstan"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/phpstan/jest.config.ts"
+      }
+    }
+  }
+}
