@@ -7,6 +7,8 @@ jest.mock('fs', () => ({
   ...jest.requireActual('memfs').fs,
 }));
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 describe('phpstan project-discovery', () => {
   let mockContext: CreateNodesContextV2;
   const workspaceRoot = '/workspace';

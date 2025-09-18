@@ -8,7 +8,7 @@ import {
   TargetConfiguration,
   logger,
 } from '@nx/devkit';
-import { dirname, basename, join, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 import { existsSync } from 'fs';
 
 /**
@@ -87,7 +87,7 @@ const createNodesFunction: CreateNodesFunctionV2 = (
       projectDirs.add(projectRoot);
       configFilesByDir.set(projectRoot, []);
     }
-    configFilesByDir.get(projectRoot)!.push(configFilePath);
+    configFilesByDir.get(projectRoot)?.push(configFilePath);
   }
 
   // Create a project for each directory that contains PHPStan config files
@@ -114,7 +114,11 @@ const createNodesFunction: CreateNodesFunctionV2 = (
       };
 
       // Use the first config file path from this directory for the result key
-      const resultKey = configFilesByDir.get(projectRoot)![0];
+      const configFiles = configFilesByDir.get(projectRoot);
+      if (!configFiles || configFiles.length === 0) {
+        continue;
+      }
+      const resultKey = configFiles[0];
       results.push([resultKey, {
         projects: {
           [projectRoot]: projectConfig,
@@ -123,8 +127,11 @@ const createNodesFunction: CreateNodesFunctionV2 = (
     } catch (error) {
       logger.warn(`Failed to create PHPStan project configuration for ${projectRoot}: ${error}`);
       // Add empty result to maintain consistent return structure
-      const resultKey = configFilesByDir.get(projectRoot)![0];
-      results.push([resultKey, {}]);
+      const configFiles = configFilesByDir.get(projectRoot);
+      if (configFiles && configFiles.length > 0) {
+        const resultKey = configFiles[0];
+        results.push([resultKey, {}]);
+      }
     }
   }
 
