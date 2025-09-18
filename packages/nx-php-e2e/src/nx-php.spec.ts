@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { join, dirname } from 'path';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 
 describe('nx-php', () => {
   let projectDirectory: string;
@@ -139,16 +139,82 @@ describe('nx-php', () => {
       // Should show the project details
       expect(showProjectOutput).toContain(projectName);
       expect(showProjectOutput).toContain('install');
-      expect(showProjectOutput).toContain('test');
+    }, 30000);
 
-      // List all projects and ensure our project is included
-      const listOutput = execSync(`npx nx show projects`, {
+    it('should create project dependencies in Nx graph', () => {
+      const libName = 'shared-lib';
+      const appName = 'main-app';
+
+      // Generate a library project
+      execSync(`npx nx g @nx-php/composer:project ${libName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Generate an application project
+      execSync(`npx nx g @nx-php/composer:project ${appName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Modify the app's composer.json to depend on the library
+      const appComposerPath = join(projectDirectory, 'packages', appName, 'composer.json');
+      const appComposer = JSON.parse(readFileSync(appComposerPath, 'utf-8'));
+      
+      // Add dependency to the library (using the same naming pattern that would be generated)
+      appComposer.require = appComposer.require || {};
+      appComposer.require[libName] = '^1.0.0';
+      
+      writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
+
+      // Get the project graph and check for dependencies
+      const graphOutput = execSync(`npx nx graph --file=graph.json --quiet`, {
         cwd: projectDirectory,
         encoding: 'utf-8',
       });
-      expect(listOutput).toContain(projectName);
+      
+      // Read the generated graph file
+      const graphPath = join(projectDirectory, 'graph.json');
+      expect(existsSync(graphPath)).toBeTruthy();
+      
+      const graph = JSON.parse(readFileSync(graphPath, 'utf-8'));
+      
+      // Check that both projects exist in the graph
+      expect(graph.nodes).toHaveProperty(appName);
+      expect(graph.nodes).toHaveProperty(libName);
+      
+      // Check that the dependency exists in the graph
+      const dependencies = graph.dependencies[appName] || [];
+      const dependsOnLib = dependencies.some(dep => dep.target === libName);
+      expect(dependsOnLib).toBeTruthy();
+    }, 45000);
+  });
+
+  it('should list all projects', () => {
+    const projectName = 'list-test-project';
+    
+    // Generate a project to test
+    execSync(`npx nx g @nx-php/composer:project ${projectName}`, {
+      cwd: projectDirectory,
+      stdio: 'inherit',
     });
 
+    // Show the specific project details
+    const showProjectOutput = execSync(`npx nx show project ${projectName}`, {
+      cwd: projectDirectory,
+      encoding: 'utf-8',
+    });
+    expect(showProjectOutput).toContain('test');
+
+    // List all projects and ensure our project is included
+    const listOutput = execSync(`npx nx show projects`, {
+      cwd: projectDirectory,
+      encoding: 'utf-8',
+    });
+    expect(listOutput).toContain(projectName);
+  });
+
+  describe('project discovery', () => {
     it('should automatically discover composer projects via project discovery', () => {
       const projectName1 = 'discovered-lib-1';
       const projectName2 = 'discovered-lib-2';
