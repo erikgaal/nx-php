@@ -101,6 +101,9 @@ For projects with PHPUnit configuration, the plugin automatically adds a `phpuni
 ### PHPUnit Usage Examples
 
 ```bash
+# Create a new project with PHPUnit enabled
+npx nx g @nx-php/phpunit:project my-test-library
+
 # Run PHPUnit tests for a specific project
 npx nx phpunit my-library
 

@@ -40,6 +40,28 @@ Add the plugin to your `nx.json`:
 }
 ```
 
+### Creating a New Project with PHPUnit
+
+The plugin includes a generator to create new PHP projects with PHPUnit already configured:
+
+```bash
+# Create a new PHP project with PHPUnit enabled
+nx g @nx-php/phpunit:project my-library
+
+# Create a project in a specific directory
+nx g @nx-php/phpunit:project my-app --directory=apps
+
+# Create a project with tags
+nx g @nx-php/phpunit:project my-lib --tags=php,library
+```
+
+The generator creates:
+- `composer.json` with PHPUnit as a dev dependency
+- `phpunit.xml` configuration file
+- Sample Calculator class and test to get started
+- Proper PSR-4 autoload configuration
+- README with usage instructions
+
 ### Running Tests
 
 Once configured, you can run PHPUnit tests using standard Nx commands:

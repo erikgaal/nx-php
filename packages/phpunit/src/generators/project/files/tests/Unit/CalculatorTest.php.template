@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Sample\PhpunitDemo\Tests\Unit;
+namespace <%= namespace %>\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Sample\PhpunitDemo\Calculator;
+use <%= namespace %>\Calculator;
 
 class CalculatorTest extends TestCase
 {
@@ -46,31 +46,5 @@ class CalculatorTest extends TestCase
         $this->expectExceptionMessage('Division by zero is not allowed');
         
         $this->calculator->divide(10, 0);
-    }
-
-    public function testPower(): void
-    {
-        $result = $this->calculator->power(2, 3);
-        $this->assertEquals(8, $result);
-    }
-
-    /**
-     * @dataProvider additionProvider
-     */
-    public function testAdditionWithDataProvider(float $a, float $b, float $expected): void
-    {
-        $result = $this->calculator->add($a, $b);
-        $this->assertEquals($expected, $result, '', 0.001);
-    }
-
-    public static function additionProvider(): array
-    {
-        return [
-            [1, 2, 3],
-            [0, 0, 0],
-            [-1, 1, 0],
-            [2.5, 2.5, 5.0],
-            [-3.2, 1.8, -1.4],
-        ];
     }
 }

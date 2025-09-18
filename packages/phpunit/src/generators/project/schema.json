@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "PhpunitProject",
+  "title": "Create a PHP project with PHPUnit",
+  "description": "Create a new PHP project with PHPUnit testing enabled",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the project",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "What is the name of the project?",
+      "pattern": "^[a-zA-Z].*$"
+    },
+    "directory": {
+      "type": "string",
+      "description": "A directory where the project is placed",
+      "alias": "dir"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Add tags to the project (used for linting)"
+    },
+    "standaloneConfig": {
+      "description": "Split the project configuration into <projectRoot>/project.json rather than including it inside workspace.json",
+      "type": "boolean",
+      "default": true,
+      "x-deprecated": "Standalone config is the default since Nx 11."
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

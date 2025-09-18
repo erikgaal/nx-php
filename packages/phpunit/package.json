@@ -4,6 +4,7 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "generators": "./generators.json",
   "nx-plugin": {
     "name": "@nx-php/phpunit"
   },
