@@ -1,95 +1,363 @@
-# NxPhp
+# Nx PHP
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+**Nx plugins for PHP development with Composer project management**
 
-Run `npx nx graph` to visually explore what got created. Now, let's get you up to speed!
+This repository provides Nx plugins that bring powerful monorepo capabilities to PHP projects, with automatic Composer project discovery and seamless integration with Nx's build system.
 
-## Run tasks
+## Features
 
-To run tasks with Nx use:
+✨ **Automatic Composer Project Discovery** - Automatically detects and registers Composer projects in your workspace  
+🚀 **Project Generation** - Create new PHP libraries and applications with proper PSR-4 structure  
+🏗️ **Nx Integration** - Full integration with Nx commands for running tasks across multiple projects  
+🧪 **Testing Support** - Built-in PHPUnit configuration and task automation  
+📦 **Dependency Management** - Intelligent handling of Composer dependencies and scripts  
+🏷️ **Smart Tagging** - Automatic project tagging based on Composer metadata
 
-```sh
-npx nx <target> <project-name>
+## Quick Start
+
+### Installation
+
+Create a new Nx workspace or add to an existing one:
+
+```bash
+# Create new workspace
+npx create-nx-workspace@latest my-php-workspace --preset=apps --nxCloud=skip
+
+cd my-php-workspace
+
+# Install the PHP Composer plugin
+npm install -D @nx-php/composer
 ```
 
-For example:
+### Configuration
 
-```sh
-npx nx build myproject
+Add the plugin to your `nx.json`:
+
+```json
+{
+  "plugins": [
+    "@nx-php/composer"
+  ]
+}
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Generate Your First PHP Project
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Create a PHP library
+npx nx g @nx-php/composer:project my-library
 
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+# Create a PHP library in a specific directory
+npx nx g @nx-php/composer:project my-app --directory=apps
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+## Project Discovery
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
+The `@nx-php/composer` plugin automatically discovers existing Composer projects by scanning for `composer.json` files. Each discovered project is configured with:
 
-# Generate a library
-npx nx g @nx/react:lib some-lib
+### Automatic Configuration
+- **Project Name**: Derived from composer.json `name` field or directory name
+- **Project Type**: Auto-detected as `library` or `application` based on composer metadata
+- **Source Root**: Configured from PSR-4 autoload paths (defaults to `src/`)  
+- **Tags**: Generated from composer `type` and `keywords` fields
+
+### Generated Projects vs Discovered Projects
+
+**Generated Projects** (created with `npx nx g @nx-php/composer:project`) include these built-in targets:
+- **`install`**: Runs `composer install`
+- **`test`**: Runs `vendor/bin/phpunit` (depends on install)
+
+**Discovered Projects** (existing composer.json files) are automatically registered as Nx projects but don't include default targets. You can add custom targets to any project via workspace configuration.
+
+## Usage Examples
+
+### Working with Generated Projects
+
+```bash
+# List all projects (including discovered Composer projects)
+npx nx show projects
+
+# Install dependencies for a generated project  
+npx nx install my-library
+
+# Run tests for generated projects
+npx nx test my-library
+
+# Run tests for multiple generated projects
+npx nx run-many --target=test --projects=my-lib1,my-lib2
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### Working with Discovered Projects
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+For discovered projects (existing composer.json files), you can run Composer commands directly:
 
-## Set up CI!
+```bash
+# Run composer commands for specific projects
+npx nx run-commands --cwd=packages/existing-lib -- composer install
+npx nx run-commands --cwd=packages/existing-lib -- composer test
 
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+# Or create custom workspace targets (see Advanced Usage section)
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+### Project Organization
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# List projects by tags
+npx nx show projects --with-tag=composer:library
+npx nx show projects --with-tag=keyword:api
 
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+# Run commands on tagged projects
+npx nx run-many --target=test --projects=tag:composer:library
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Project Graph Visualization
 
-## Install Nx Console
+```bash
+# Visualize your project dependencies
+npx nx graph
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+## Workspace Structure
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+A typical PHP workspace with the Composer plugin looks like this:
 
-## Useful links
+```
+my-php-workspace/
+├── packages/
+│   ├── my-library/
+│   │   ├── composer.json
+│   │   ├── src/
+│   │   └── tests/
+│   └── shared-utils/
+│       ├── composer.json
+│       └── src/
+├── apps/
+│   └── my-app/
+│       ├── composer.json
+│       ├── bin/
+│       └── src/
+├── vendor/               # Composer global dependencies
+├── nx.json              # Nx configuration with PHP plugins
+└── composer.json        # Workspace-level composer.json (optional)
+```
 
-Learn more:
+## Sample composer.json Files
 
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Library Project
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```json
+{
+  "name": "my-org/useful-library",
+  "type": "library",
+  "description": "A useful PHP library",
+  "keywords": ["php", "library", "utilities"],
+  "require": {
+    "php": "^8.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "MyOrg\\UsefulLibrary\\": "src/"
+    }
+  }
+}
+```
+
+### Application Project
+
+```json
+{
+  "name": "my-org/web-app", 
+  "type": "project",
+  "description": "A PHP web application",
+  "require": {
+    "php": "^8.0",
+    "my-org/useful-library": "^1.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.0"
+  },
+  "scripts": {
+    "start": "php bin/server.php",
+    "test": "vendor/bin/phpunit --coverage-clover coverage.xml"
+  }
+}
+```
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm ci
+      
+      # For generated projects with targets
+      - run: npx nx run-many --target=install --projects=tag:composer:library
+      - run: npx nx run-many --target=test --projects=tag:composer:library
+      
+      # For discovered projects, use custom targets or direct commands
+      - run: npx nx run-many --target=composer-install --all
+      - run: npx nx run-many --target=composer-test --all
+```
+
+## Advanced Usage
+
+### Adding Targets to Discovered Projects
+
+For discovered Composer projects, you can add targets via workspace configuration. Add to your `nx.json`:
+
+```json
+{
+  "targetDefaults": {
+    "composer-install": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "composer install"
+      }
+    },
+    "composer-test": {
+      "executor": "nx:run-commands", 
+      "options": {
+        "command": "vendor/bin/phpunit"
+      },
+      "dependsOn": ["composer-install"]
+    },
+    "composer-validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "composer validate"
+      }
+    }
+  }
+}
+```
+
+Then run targets across all projects:
+
+```bash
+# Install dependencies for all projects
+npx nx run-many --target=composer-install --all
+
+# Validate all composer.json files  
+npx nx run-many --target=composer-validate --all
+```
+
+### Project-Specific Configuration
+
+You can also add targets to specific discovered projects by creating a `project.json` file:
+
+```json
+{
+  "name": "existing-project",
+  "targets": {
+    "install": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "composer install",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}
+```
+
+### Project Tags and Organization
+
+Projects are automatically tagged based on their Composer metadata:
+
+- `composer:library` - For library-type packages
+- `composer:project` - For application-type packages  
+- `keyword:*` - Based on composer.json keywords
+
+Use these tags to run commands on specific project types:
+
+```bash
+# Show only libraries
+npx nx show projects --with-tag=composer:library
+
+# Show projects with specific keywords
+npx nx show projects --with-tag=keyword:api
+```
+
+## Requirements
+
+- **PHP**: 8.0 or higher
+- **Node.js**: 18.0 or higher
+- **Composer**: 2.0 or higher
+- **Nx**: 15.0 or higher
+
+## Available Plugins
+
+- **@nx-php/composer** - Composer project discovery and management
+
+## Development
+
+### Contributing
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the plugins: `npx nx run-many --target=build --all`
+4. Run tests: `npx nx run-many --target=test --all`
+
+### Plugin Development
+
+This workspace uses Nx plugin development tools:
+
+```bash
+# Generate a new plugin
+npx nx g @nx/plugin:plugin my-php-plugin
+
+# Test plugin functionality  
+npx nx test my-php-plugin-e2e
+```
+
+## Resources & Documentation
+
+### Nx Documentation
+- [Nx PHP Plugin Documentation](packages/composer/README.md)
+- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins)
+- [Nx Plugin Development](https://nx.dev/extending-nx/intro/getting-started)
+- [Project Graph](https://nx.dev/concepts/the-project-graph)
+
+### PHP & Composer Resources
+- [Composer Documentation](https://getcomposer.org/doc/)
+- [PSR-4 Autoloading](https://www.php-fig.org/psr/psr-4/)
+- [PHPUnit Testing Framework](https://phpunit.de/)
+
+### CI/CD & DevOps
+- [Nx on CI](https://nx.dev/ci/intro/ci-with-nx)
+- [Nx Cloud](https://nx.dev/ci/intro/ci-with-nx)  
+- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases)
+
+## Community & Support
+
+- [Nx Discord Community](https://go.nx.dev/community)
+- [Nx on GitHub](https://github.com/nrwl/nx)
+- [Follow Nx on X/Twitter](https://twitter.com/nxdevtools)
+- [Nx Blog](https://nx.dev/blog)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+Built with ❤️ using [Nx](https://nx.dev) - Smart Monorepos · Fast CI
