@@ -220,21 +220,6 @@ describe('nx-php', () => {
       
       writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
 
-      // Create some files to test with
-      const libSourcePath = join(projectDirectory, 'packages', libName, 'src');
-      const appSourcePath = join(projectDirectory, 'packages', appName, 'src');
-      
-      // Create directories if they don't exist
-      execSync(`mkdir -p ${libSourcePath}`, { cwd: projectDirectory });
-      execSync(`mkdir -p ${appSourcePath}`, { cwd: projectDirectory });
-      
-      // Create source files
-      const libFilePath = join(libSourcePath, 'Library.php');
-      const appFilePath = join(appSourcePath, 'App.php');
-      
-      writeFileSync(libFilePath, '<?php\nclass Library {}\n');
-      writeFileSync(appFilePath, '<?php\nclass App {}\n');
-
       // Reset the project graph to ensure changes are picked up
       execSync(`npx nx reset`, {
         cwd: projectDirectory,
