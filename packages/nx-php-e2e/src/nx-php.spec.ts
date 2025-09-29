@@ -193,6 +193,72 @@ describe('nx-php', () => {
       expect(showLibOutput).toContain('library');
       
     }, 45000);
+
+    it('should correctly identify affected projects based on dependencies', () => {
+      const libName = 'shared-lib';
+      const appName = 'main-app';
+
+      // Generate a library project
+      execSync(`npx nx g @nx-php/composer:project ${libName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Generate an application project
+      execSync(`npx nx g @nx-php/composer:project ${appName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Modify the app's composer.json to depend on the library
+      const appComposerPath = join(projectDirectory, 'packages', appName, 'composer.json');
+      const appComposer = JSON.parse(readFileSync(appComposerPath, 'utf-8'));
+      
+      // Add dependency to the library
+      appComposer.require = appComposer.require || {};
+      appComposer.require[libName] = '^1.0.0';
+      
+      writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
+
+      // Create some files to test with
+      const libSourcePath = join(projectDirectory, 'packages', libName, 'src');
+      const appSourcePath = join(projectDirectory, 'packages', appName, 'src');
+      
+      // Create directories if they don't exist
+      execSync(`mkdir -p ${libSourcePath}`, { cwd: projectDirectory });
+      execSync(`mkdir -p ${appSourcePath}`, { cwd: projectDirectory });
+      
+      // Create source files
+      const libFilePath = join(libSourcePath, 'Library.php');
+      const appFilePath = join(appSourcePath, 'App.php');
+      
+      writeFileSync(libFilePath, '<?php\nclass Library {}\n');
+      writeFileSync(appFilePath, '<?php\nclass App {}\n');
+
+      // Reset the project graph to ensure changes are picked up
+      execSync(`npx nx reset`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Test 1: When a file is changed within main-app, only that should be affected
+      const affectedByApp = execSync(`npx nx show projects --affected --files packages/${appName}/src/App.php`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      }).trim().split('\n').filter(line => line.trim());
+
+      expect(affectedByApp).toContain(appName);
+      expect(affectedByApp).not.toContain(libName);
+
+      // Test 2: When a file is changed within shared-lib, both should be affected
+      const affectedByLib = execSync(`npx nx show projects --affected --files packages/${libName}/src/Library.php`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      }).trim().split('\n').filter(line => line.trim());
+
+      expect(affectedByLib).toContain(libName);
+      expect(affectedByLib).toContain(appName); // main-app depends on shared-lib, so it should be affected too
+    }, 60000);
   });
 
   it('should list all projects', () => {
