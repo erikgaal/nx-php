@@ -1,2 +1,2 @@
 export * from './generators/project/generator';
-export { createNodesV2 } from './project-discovery';
+export { createNodesV2, createDependencies } from './project-discovery';

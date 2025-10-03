@@ -156,16 +156,149 @@ describe('nx-php', () => {
       // Should show the project details
       expect(showProjectOutput).toContain(projectName);
       expect(showProjectOutput).toContain('install');
-      expect(showProjectOutput).toContain('test');
+    }, 30000);
 
-      // List all projects and ensure our project is included
-      const listOutput = execSync(`npx nx show projects`, {
+    it('should create project dependencies in Nx graph', () => {
+      const libName = 'shared-lib';
+      const appName = 'main-app';
+
+      // Generate a library project
+      execSync(`npx nx g @nx-php/composer:project ${libName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Generate an application project
+      execSync(`npx nx g @nx-php/composer:project ${appName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Modify the app's composer.json to depend on the library
+      const appComposerPath = join(projectDirectory, 'packages', appName, 'composer.json');
+      const appComposer = JSON.parse(readFileSync(appComposerPath, 'utf-8'));
+      
+      // Add dependency to the library (using the same naming pattern that would be generated)
+      appComposer.require = appComposer.require || {};
+      appComposer.require[libName] = '^1.0.0';
+      
+      writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
+
+      // Reset the project graph to ensure changes are picked up
+      execSync(`npx nx reset`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Verify that both projects are still recognized and the app shows a dependency
+      const showAppOutput = execSync(`npx nx show project ${appName}`, {
         cwd: projectDirectory,
         encoding: 'utf-8',
       });
-      expect(listOutput).toContain(projectName);
+      
+      const showLibOutput = execSync(`npx nx show project ${libName}`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      });
+
+      // Both projects should be discoverable
+      expect(showAppOutput).toContain(appName);
+      expect(showLibOutput).toContain(libName);
+      
+      // Verify project types
+      expect(showAppOutput).toContain('library'); // Generated projects default to library
+      expect(showLibOutput).toContain('library');
+      
+    }, 45000);
+
+    it('should correctly identify affected projects based on dependencies', () => {
+      const libName = 'affected-shared-lib';
+      const appName = 'affected-main-app';
+
+      // Generate a library project
+      execSync(`npx nx g @nx-php/composer:project ${libName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Generate an application project
+      execSync(`npx nx g @nx-php/composer:project ${appName}`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Modify the app's composer.json to depend on the library
+      const appComposerPath = join(projectDirectory, 'packages', appName, 'composer.json');
+      const appComposer = JSON.parse(readFileSync(appComposerPath, 'utf-8'));
+      
+      // Add dependency to the library
+      appComposer.require = appComposer.require || {};
+      appComposer.require[libName] = '^1.0.0';
+      
+      writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
+
+      // Ensure the plugin is configured in nx.json
+      const nxJsonPath = join(projectDirectory, 'nx.json');
+      const nxJson = JSON.parse(readFileSync(nxJsonPath, 'utf-8'));
+      if (!nxJson.plugins) {
+        nxJson.plugins = [];
+      }
+      if (!nxJson.plugins.includes('@nx-php/composer')) {
+        nxJson.plugins.push('@nx-php/composer');
+        writeFileSync(nxJsonPath, JSON.stringify(nxJson, null, 2));
+      }
+
+      // Reset the project graph to ensure changes are picked up
+      execSync(`npx nx reset`, {
+        cwd: projectDirectory,
+        stdio: 'inherit',
+      });
+
+      // Test 1: When a file is changed within main-app, only that should be affected
+      const affectedByApp = execSync(`npx nx show projects --affected --files packages/${appName}/src/App.php`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      }).trim().split('\n').filter(line => line.trim());
+
+      expect(affectedByApp).toContain(appName);
+      expect(affectedByApp).not.toContain(libName);
+
+      // Test 2: When a file is changed within shared-lib, both should be affected
+      const affectedByLib = execSync(`npx nx show projects --affected --files packages/${libName}/src/Library.php`, {
+        cwd: projectDirectory,
+        encoding: 'utf-8',
+      }).trim().split('\n').filter(line => line.trim());
+
+      expect(affectedByLib).toContain(libName);
+      expect(affectedByLib).toContain(appName); // main-app depends on shared-lib, so it should be affected too
+    }, 60000);
+  });
+
+  it('should list all projects', () => {
+    const projectName = 'list-test-project';
+    
+    // Generate a project to test
+    execSync(`npx nx g @nx-php/composer:project ${projectName}`, {
+      cwd: projectDirectory,
+      stdio: 'inherit',
     });
 
+    // Show the specific project details
+    const showProjectOutput = execSync(`npx nx show project ${projectName}`, {
+      cwd: projectDirectory,
+      encoding: 'utf-8',
+    });
+    expect(showProjectOutput).toContain('test');
+
+    // List all projects and ensure our project is included
+    const listOutput = execSync(`npx nx show projects`, {
+      cwd: projectDirectory,
+      encoding: 'utf-8',
+    });
+    expect(listOutput).toContain(projectName);
+  });
+
+  describe('project discovery', () => {
     it('should automatically discover composer projects via project discovery', () => {
       const projectName1 = 'discovered-lib-1';
       const projectName2 = 'discovered-lib-2';

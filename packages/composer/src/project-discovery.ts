@@ -6,6 +6,10 @@ import {
   CreateNodesResultV2,
   ProjectConfiguration,
   logger,
+  CreateDependencies,
+  CreateDependenciesContext,
+  RawProjectGraphDependency,
+  DependencyType,
 } from '@nx/devkit';
 import { dirname, relative, resolve } from 'path';
 import { existsSync, readFileSync } from 'fs';
@@ -110,6 +114,111 @@ function createProjectConfiguration(
 }
 
 /**
+ * Parse dependencies from composer.json
+ */
+function parseDependencies(composerJson: ComposerJson): { 
+  require: Record<string, string>;
+  requireDev: Record<string, string>;
+} {
+  return {
+    require: composerJson.require || {},
+    requireDev: composerJson['require-dev'] || {},
+  };
+}
+
+/**
+ * Check if a dependency name matches a workspace project name
+ */
+function findWorkspaceDependency(
+  dependencyName: string, 
+  projects: Record<string, ProjectConfiguration>
+): string | null {
+  // Direct name match (e.g., "vendor/package" -> "vendor-package")
+  const normalizedDependencyName = dependencyName.replace('/', '-');
+  
+  // Check if any project has this name as their composer package name or project name
+  for (const [projectRoot, project] of Object.entries(projects)) {
+    // Check direct project name match
+    if (project.name === normalizedDependencyName) {
+      return project.name;
+    }
+    
+    // Check if the dependency name matches any project's composer package name pattern
+    // Extract package name part (after slash) and compare
+    if (dependencyName.includes('/')) {
+      const packagePart = dependencyName.split('/')[1];
+      const packageNormalized = packagePart.replace(/[^a-zA-Z0-9]/g, '-');
+      
+      if (project.name === packageNormalized || project.name === packagePart) {
+        return project.name;
+      }
+    }
+    
+    // Check if the project root matches (for projects without names)
+    const normalizedProjectRoot = projectRoot.replace(/[/\\]/g, '-');
+    if (normalizedProjectRoot === normalizedDependencyName) {
+      return project.name || projectRoot;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Create dependencies function for adding project graph edges
+ */
+const createDependencies: CreateDependencies = (
+  options: undefined,
+  context: CreateDependenciesContext
+): RawProjectGraphDependency[] => {
+  const dependencies: RawProjectGraphDependency[] = [];
+  
+  // Process each project to find its composer.json and dependencies
+  for (const [projectName, projectConfig] of Object.entries(context.projects)) {
+    const composerJsonPath = resolve(context.workspaceRoot, projectConfig.root, 'composer.json');
+    
+    if (!existsSync(composerJsonPath)) {
+      continue;
+    }
+    
+    const composerJson = parseComposerJson(composerJsonPath);
+    if (!composerJson) {
+      continue;
+    }
+    
+    const { require, requireDev } = parseDependencies(composerJson);
+    
+    // Process production dependencies
+    for (const dependencyName of Object.keys(require)) {
+      const workspaceDependency = findWorkspaceDependency(dependencyName, context.projects);
+      if (workspaceDependency && workspaceDependency !== projectName) {
+        dependencies.push({
+          source: projectName,
+          target: workspaceDependency,
+          type: DependencyType.static,
+          sourceFile: relative(context.workspaceRoot, composerJsonPath),
+        });
+      }
+    }
+    
+    // Process development dependencies
+    for (const dependencyName of Object.keys(requireDev)) {
+      const workspaceDependency = findWorkspaceDependency(dependencyName, context.projects);
+      if (workspaceDependency && workspaceDependency !== projectName) {
+        dependencies.push({
+          source: projectName,
+          target: workspaceDependency,
+          type: DependencyType.static,
+          sourceFile: relative(context.workspaceRoot, composerJsonPath),
+        });
+      }
+    }
+  }
+  
+  return dependencies;
+};
+
+/**
  * Create nodes function for discovering Composer projects
  */
 const createNodesFunction: CreateNodesFunctionV2 = (
@@ -152,3 +261,8 @@ export const createNodesV2: CreateNodesV2 = [
   '**/composer.json',
   createNodesFunction,
 ] as const;
+
+/**
+ * The createDependencies configuration for the Composer plugin
+ */
+export { createDependencies };

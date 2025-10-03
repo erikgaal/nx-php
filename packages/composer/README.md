@@ -1,18 +1,33 @@
 # Composer Project Discovery
 
-The `@nx-php/composer` plugin automatically discovers and registers Composer projects in your Nx workspace by scanning for `composer.json` files.
+The `@nx-php/composer` plugin automatically discovers and registers Composer projects in your Nx workspace by scanning for `composer.json` files and parsing their dependencies to build an accurate project graph.
 
 ## How It Works
 
-The plugin scans your workspace for any `composer.json` files and automatically registers them as Nx projects. Each discovered project is configured with:
+The plugin scans your workspace for any `composer.json` files and automatically:
+
+1. **Registers** them as Nx projects with appropriate configuration
+2. **Parses dependencies** from `require` and `require-dev` sections
+3. **Creates project graph edges** for internal workspace dependencies
+4. **Tracks external dependencies** for future use (e.g., visualization, reporting)
 
 ### Project Configuration
 - **Project Name**: Derived from the `name` field in `composer.json`, or the directory name if no name is specified
 - **Project Type**: Determined automatically:
-  - `library` for packages marked with `"type": "library"` or packages without dev dependencies/scripts
-  - `application` for packages with `require-dev` dependencies or composer scripts
+  - `application` for packages marked with `"type": "project"`
+  - `library` for all other package types
 - **Source Root**: Configured based on PSR-4 autoload configuration, defaults to `src/`
 - **Tags**: Generated from composer `type` and `keywords` fields
+
+### Dependency Resolution
+
+The plugin intelligently resolves dependencies between workspace projects:
+
+- **Internal Dependencies**: Dependencies that reference other projects in the workspace are automatically detected and added as edges in the Nx project graph
+- **External Dependencies**: Dependencies on Packagist or other external sources are tracked but don't create graph edges
+- **Dependency Matching**: Uses flexible matching to handle different naming patterns:
+  - `vendor/package-name` → `vendor-package-name` (project name)
+  - `my-workspace/lib-name` → `lib-name` (project name)
 
 ### Available Targets
 
@@ -28,25 +43,26 @@ Each discovered project gets the following targets:
 ```
 workspace/
 ├── packages/
-│   └── my-library/
-│       └── composer.json
+│   ├── shared-library/
+│   │   └── composer.json  # "name": "my-workspace/shared-library"
+│   └── utils/
+│       └── composer.json  # "name": "my-workspace/utils"  
 ├── apps/
-│   └── my-app/
-│       └── composer.json
-└── vendor/
-    └── some-package/
-        └── composer.json
+│   └── main-app/
+│       └── composer.json  # depends on "my-workspace/shared-library"
 ```
+
+In this example, the plugin will automatically create a dependency edge from `main-app` to `shared-library` in the Nx project graph.
 
 ## Example composer.json Files
 
 ### Library Project
 ```json
 {
-  "name": "example/my-library",
+  "name": "my-workspace/shared-library",
   "type": "library",
-  "description": "A sample PHP library",
-  "keywords": ["php", "library"],
+  "description": "Shared utilities and components",
+  "keywords": ["php", "library", "utilities"],
   "require": {
     "php": "^8.0"
   },
@@ -55,19 +71,23 @@ workspace/
   },
   "autoload": {
     "psr-4": {
-      "Example\\MyLibrary\\": "src/"
+      "MyWorkspace\\SharedLibrary\\": "src/"
     }
   }
 }
 ```
 
-### Application Project
+### Application Project with Workspace Dependencies
 ```json
 {
-  "name": "example/my-app",
-  "description": "A sample PHP application",
+  "name": "my-workspace/main-app", 
+  "type": "project",
+  "description": "Main application",
   "require": {
-    "php": "^8.0"
+    "php": "^8.0",
+    "my-workspace/shared-library": "^1.0",
+    "my-workspace/utils": "^1.0",
+    "symfony/console": "^6.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.0"
@@ -79,23 +99,53 @@ workspace/
 }
 ```
 
+In this example:
+- `my-workspace/shared-library` and `my-workspace/utils` are **internal dependencies** - they create edges in the project graph
+- `symfony/console` is an **external dependency** - it's tracked but doesn't create graph edges
+
 ## Usage
 
-Once the plugin is configured, you can use standard Nx commands:
+Once the plugin is configured, you can use standard Nx commands with full dependency graph support:
 
 ```bash
 # List all projects (including discovered Composer projects)
 nx show projects
 
-# Run composer install for a specific project
-nx install my-library
+# Show project dependencies and dependents
+nx show project my-app
+nx show project shared-library --with-deps
 
-# Run tests for all Composer projects
-nx run-many --target=test --projects=tag:composer:library
+# View the project graph (includes internal dependencies)
+nx graph
+
+# Run commands with dependency awareness
+nx build main-app  # Will build dependencies first if configured
+nx test shared-library  # Run tests for the library
+
+# Run commands for multiple projects based on dependencies
+nx affected --target=test  # Test only projects affected by changes
+nx run-many --target=build --projects=tag:composer:application
 
 # Validate all composer.json files
 nx run-many --target=validate
 ```
+
+### Nx Graph Integration
+
+The dependency parsing creates a visual project graph that shows:
+- Internal dependencies between workspace projects
+- Project types (library vs application)
+- Dependency flow and relationships
+
+Run `nx graph` to see the interactive dependency visualization.
+
+### Dependency-Aware Commands
+
+With the project graph properly configured, Nx can:
+- Run tasks in dependency order
+- Skip unchanged projects and their dependencies
+- Show which projects are affected by changes
+- Optimize task execution with intelligent caching
 
 ## Plugin Configuration
 
