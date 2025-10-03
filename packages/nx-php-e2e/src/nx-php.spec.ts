@@ -195,8 +195,8 @@ describe('nx-php', () => {
     }, 45000);
 
     it('should correctly identify affected projects based on dependencies', () => {
-      const libName = 'shared-lib';
-      const appName = 'main-app';
+      const libName = 'affected-shared-lib';
+      const appName = 'affected-main-app';
 
       // Generate a library project
       execSync(`npx nx g @nx-php/composer:project ${libName}`, {
@@ -219,6 +219,17 @@ describe('nx-php', () => {
       appComposer.require[libName] = '^1.0.0';
       
       writeFileSync(appComposerPath, JSON.stringify(appComposer, null, 2));
+
+      // Ensure the plugin is configured in nx.json
+      const nxJsonPath = join(projectDirectory, 'nx.json');
+      const nxJson = JSON.parse(readFileSync(nxJsonPath, 'utf-8'));
+      if (!nxJson.plugins) {
+        nxJson.plugins = [];
+      }
+      if (!nxJson.plugins.includes('@nx-php/composer')) {
+        nxJson.plugins.push('@nx-php/composer');
+        writeFileSync(nxJsonPath, JSON.stringify(nxJson, null, 2));
+      }
 
       // Reset the project graph to ensure changes are picked up
       execSync(`npx nx reset`, {
